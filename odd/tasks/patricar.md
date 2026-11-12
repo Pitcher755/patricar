@@ -205,3 +205,21 @@ L6 (revisión nativa RDD — pendiente de decisión):
   relanzar el mismo slot alcanza la misma pared. La línea queda en estado `reviewing`
   (abierta) hasta decisión del humano: subir `GENTLE_PI_REVIEW_RELAY_PI_TIMEOUT_MS`
   (techo 7.200.000 ms) y reintentar, o autorizar reducción de alcance / abandono de la línea.
+
+L7 (continuación elegida para L6: subir la cota y reintentar):
+- La cota no es un número fijo: se deriva de `900_000 + ceil(bytes/1MiB × 900_000)` y se
+  recorta a 7.200.000 ms. Para los 89.600 bytes de este candidato da exactamente
+  976.905 ms, que es el límite contra el que se midió el timeout.
+- `GENTLE_PI_REVIEW_RELAY_PI_TIMEOUT_MS` se lee de `process.env` en cada corrida y **no**
+  tiene fallback a archivo de configuración (`lib/review-host-relay.ts:465`). Por eso no
+  se puede subir desde adentro de esta sesión: hay que reiniciar Pi con la variable puesta.
+- Valor recomendado: `7200000` (techo, 7,4x el bound derivado).
+- Reanudación tras reiniciar (la línea es durable, no se consume ni se pierde):
+  1. `gentle_review` → `status` con `lineageId: review-1f1557ba179f7184` y `workspaceRoot`
+     de este repo. Reofrece los 3 collect bindings exactos.
+  2. `gentle_review_capture_group` con esos 3 bindings → devuelve el forecast.
+  3. Reenviar los mismos 3 bindings con `reviewerRunAcknowledged: true`.
+  4. Seguir desde el `next_transition` que devuelva la captura (`approved` →
+     `acknowledge-approved` exacto).
+- No se reintenta ahora en la misma sesión: gastaría 3 corridas de modelo y ~16 minutos
+  para chocar con la misma pared, y el provider lo desaconseja explícitamente.
