@@ -223,3 +223,19 @@ L7 (continuación elegida para L6: subir la cota y reintentar):
      `acknowledge-approved` exacto).
 - No se reintenta ahora en la misma sesión: gastaría 3 corridas de modelo y ~16 minutos
   para chocar con la misma pared, y el provider lo desaconseja explícitamente.
+
+L8 (cierre de la línea por decisión del usuario):
+- `ABANDON` ejecutado sobre `review-1f1557ba179f7184` con `actor: pi`,
+  `reason: operator_disposition`. Registro: `gentle-ai.review-reclaim-record/v1`,
+  `status: committed`, `reclaimed_at: 2026-11-12T21:25:47Z`.
+- `discarded_work`: `captured_lens_results: []`, `findings_present: false`. No se perdió
+  ningún hallazgo: no llegó a admitirse ninguno.
+- La transacción quedó en cuarentena en
+  `.git/gentle-ai/review-transactions/quarantine/review-1f1557ba179f7184-1148999468`.
+- `inspect` posterior: `counts.lineages: 0`, sin autoridad abierta ni conflictos.
+- Consecuencia: la entrega sigue igual (61 tests verdes, CI en verde, verificador
+  independiente 12/12). Lo único que falta es esa segunda opinión formal.
+- Camino pendiente, cuando se decida: reiniciar Pi con
+  `GENTLE_PI_REVIEW_RELAY_PI_TIMEOUT_MS=7200000` y abrir una línea nueva sobre el mismo
+  rango (`baseRef` = commit previo a `eb38c5c`, `committedOnly: true`). No conviene
+  fabricar un candidato más chico: exigiría reescribir historia ya publicada en `main`.
