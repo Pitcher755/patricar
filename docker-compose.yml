@@ -1,0 +1,22 @@
+services:
+  patricar:
+    build:
+      context: .
+    image: patricar:local
+    container_name: patricar
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      # Sin valor por defecto a propósito: si falta, el arranque del contenedor
+      # falla en vez de exponer la app con el PIN de ejemplo.
+      ADMIN_PIN: ${ADMIN_PIN:?definí ADMIN_PIN en el .env antes de levantar PatriCar}
+      PORT: 3000
+      DB_PATH: /app/data/patricar.sqlite
+      TIMEZONE: ${TIMEZONE:-Europe/Madrid}
+    volumes:
+      - patricar-data:/app/data
+
+volumes:
+  patricar-data:
