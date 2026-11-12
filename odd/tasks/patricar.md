@@ -1,5 +1,8 @@
 # PatriCar — micro-app de asientos diarios al trabajo
 
+Risk: item 2 (security: autenticación por PIN del panel de admin y entrada de usuario
+no confiable renderizada en HTML y persistida en SQLite).
+
 Feature: reserva de las 2 plazas traseras dinámicas del coche de Patri (L-V),
 horarios de ida/vuelta protegidos por PIN, reseteo automático diario.
 Stack: Node.js + Express + HTMX + Tailwind (CDN) + SQLite (better-sqlite3). Entrega: un contenedor Docker.
