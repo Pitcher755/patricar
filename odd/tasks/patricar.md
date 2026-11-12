@@ -77,17 +77,17 @@ un defecto que esta implementación no hereda.
 
 | ID | Specs | Ruta | Commit |
 |----|-------|------|--------|
-| T1 | S1-S12 | spec + scaffolding (`package.json`, `node:test`, gitignore) | — |
-| T2 | S3 | capa DB: esquema, seed idempotente, lecturas/escrituras | — |
-| T3 | S8 | dominio de fecha/reset (timezone, día laborable, middleware) | — |
-| T4 | S1, S2, S12 | render de la vista y del asiento (diseño aprobado) + escape | — |
-| T5 | S4, S5 | book/unbook + validación + fragmento HTMX | — |
-| T6 | S6, S7 | admin time/reset con PIN | — |
-| T7 | S9, S10, S12 | env/config + body limit + `/health` | — |
-| T8 | S10 | Dockerfile, compose, .dockerignore | — |
-| T9 | S11 | CI + README | — |
-| T10 | — | repo público en GitHub + push | — |
-| T11 | — | verificación independiente + review nativa | — |
+| T1 | S1-S12 | spec + scaffolding (`package.json`, `node:test`, gitignore) | `1ac4ca6` |
+| T2 | S3-S5, S7 | capa DB: esquema, seed idempotente, lecturas/escrituras | `95c99d5` |
+| T3 | S8 | dominio de fecha/reset (timezone, día laborable, middleware) | `08b6e5d` |
+| T4 | S1, S2, S12 | render de la vista y del asiento (diseño aprobado) + escape | `eb38c5c` |
+| T5 | S4, S5 | book/unbook + validación + fragmento HTMX | `eb38c5c` |
+| T6 | S6, S7 | admin time/reset con PIN | `eb38c5c` |
+| T7 | S9, S10, S12 | env/config + body limit + `/health` | `eb38c5c` |
+| T8 | S10 | Dockerfile, compose, .dockerignore | `87ca425` |
+| T9 | S11 | CI + README | `726c159` |
+| T10 | — | repo público en GitHub + push | ver Log L6 |
+| T11 | — | verificación independiente + review nativa | ver Log L6 |
 
 ## Log
 
