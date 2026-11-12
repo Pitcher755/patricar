@@ -166,3 +166,19 @@ test('S7: un 401 de reseteo no filtra el PIN esperado ni el hash', async () => {
     await close();
   }
 });
+
+test('S12: body >10 kb en /admin/time devuelve 413 sin modificar config', async () => {
+  const { baseUrl, close, db } = await startServer();
+  try {
+    const response = await fetch(
+      `${baseUrl}/admin/time`,
+      form({ pin: DEFAULT_PIN, time_ida: '07:00', time_vuelta: '18:00', pad: 'x'.repeat(11 * 1024) }),
+    );
+
+    assert.equal(response.status, 413);
+    assert.equal(getConfig(db, CONFIG_KEYS.timeIda), '08:00');
+    assert.equal(getConfig(db, CONFIG_KEYS.timeVuelta), '17:00');
+  } finally {
+    await close();
+  }
+});

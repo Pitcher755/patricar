@@ -177,3 +177,31 @@ footer `Puntualidad británica requerida (máx. 5 min de espera)` y `Bizum volun
 Cambios deliberados respecto del prototipo: (a) se elimina el texto `PIN demo: 1234` y la
 verificación de PIN en cliente (S12); (b) el estado de las reservas deja de vivir en JS y pasa a
 HTMX contra el servidor (S1); (c) se agrega `Resetear plazas` (L3).
+
+L5 (evidencia de verificación):
+- `npm test`: 61 tests, 61 pass, 0 fail. Los 4 últimos (ids fuera de rango → 404,
+  XSS con ruptura de atributos, 413 en `/admin/time`, fin de semana por HTTP) los
+  propuso el verificador independiente y se incorporaron.
+- Verificación independiente (subagente read-only): S1-S12 satisfechas, 0 bloqueantes,
+  3 nits sin acción (precedencia 409 vs 400 en asiento fijo; el warning de arranque
+  imprime el PIN por defecto documentado; `EXPOSE 3000` estático frente a `$PORT`).
+  Ejecutó la suite, dos probes HTTP propios, arranque real sin `ADMIN_PIN`,
+  `docker compose config` sin/con PIN, y comparó dumps de la base antes/después de
+  las 12 rutas de rechazo: sin cambios.
+- Docker: imagen construida, contenedor arriba, `/health` OK, reserva persistida en el
+  volumen nombrado.
+- CI remoto (GitHub Actions, repo público): job `Tests (Node 24)` y job
+  `Docker image smoke test` en verde en el commit `726c159`.
+
+L6 (revisión nativa RDD — pendiente de decisión):
+- `assess` sobre `08b6e5dd64f5a270a657c25be226918d1201ce4e..HEAD`: `nativeRisk` high,
+  `reviewDue` true, 16 paths / 1742 líneas, tier high.
+- `START` creó la línea `review-1f1557ba179f7184` con lentes `review-risk`,
+  `review-resilience`, `review-reliability`.
+- La captura del grupo de 3 revisores falló por cota de relay del host:
+  `pi-host-relay-timeout` tras 976.907 ms contra un límite de 976.905 ms para un prompt
+  materializado de 89.600 bytes. Sin mutación, sin autoridad consumida.
+- STATUS fresco reofrece exactamente los mismos 3 slots; el propio provider advierte que
+  relanzar el mismo slot alcanza la misma pared. La línea queda en estado `reviewing`
+  (abierta) hasta decisión del humano: subir `GENTLE_PI_REVIEW_RELAY_PI_TIMEOUT_MS`
+  (techo 7.200.000 ms) y reintentar, o autorizar reducción de alcance / abandono de la línea.

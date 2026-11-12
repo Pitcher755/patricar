@@ -190,3 +190,39 @@ test('S4: reservar y liberar a través de la app deja la vista consistente', asy
     await close();
   }
 });
+
+test('S4: ids numéricos fuera de rango dan 404, no 500', async () => {
+  const { baseUrl, close, db, clock } = await startServer();
+  try {
+    sealToday(db, clock);
+    for (const id of ['99999999999999999999', '18446744073709551616', '9007199254740993']) {
+      const book = await fetch(`${baseUrl}/api/book/${id}`, form({ name: 'X' }));
+      assert.equal(book.status, 404, id);
+      const unbook = await fetch(`${baseUrl}/api/unbook/${id}`, { method: 'POST' });
+      assert.equal(unbook.status, 404, id);
+    }
+  } finally {
+    await close();
+  }
+});
+
+test('S12: XSS con ruptura de atributos se escapa en fragmento y vista', async () => {
+  const { baseUrl, close, db, clock } = await startServer();
+  try {
+    sealToday(db, clock);
+    const seat = getSeatByPosition(db, 'back_right');
+    for (const xss of ['"><img src=x onerror=alert(1)>', "'><svg onload=alert(1)>"]) {
+      const response = await fetch(`${baseUrl}/api/book/${seat.id}`, form({ name: xss }));
+      const fragment = await response.text();
+      const page = await (await fetch(`${baseUrl}/`)).text();
+
+      assert.equal(response.status, 200);
+      assert.ok(!fragment.includes(xss), `fragmento: ${xss}`);
+      assert.ok(!page.includes(xss), `vista: ${xss}`);
+      assert.doesNotMatch(fragment, /<img src=x|<svg onload/);
+      await fetch(`${baseUrl}/api/unbook/${seat.id}`, { method: 'POST' });
+    }
+  } finally {
+    await close();
+  }
+});

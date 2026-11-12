@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { startServer, form } from './helpers.js';
 import { loadConfig, DEFAULT_ADMIN_PIN } from '../src/config.js';
-import { getSeatByPosition, getConfig, CONFIG_KEYS, bookSeat } from '../src/db.js';
+import { openDb, getSeatByPosition, getConfig, setConfig, CONFIG_KEYS, bookSeat } from '../src/db.js';
 
 test('S10: GET /health responde 200 con la base consultable', async () => {
   const { baseUrl, close } = await startServer();
@@ -128,4 +128,24 @@ test('S9: DB_PATH y TIMEZONE tienen defaults operativos', () => {
   assert.equal(config.timeZone, 'Europe/Madrid');
   assert.equal(loadConfig({ TIMEZONE: 'UTC' }, { warn() {} }).timeZone, 'UTC');
   assert.equal(loadConfig({ DB_PATH: '/tmp/x.sqlite' }, { warn() {} }).dbPath, '/tmp/x.sqlite');
+});
+
+test('S8: sábado y domingo no resetean por HTTP ni tocan last_reset_date', async () => {
+  const db = openDb(':memory:');
+  setConfig(db, CONFIG_KEYS.lastResetDate, '2025-11-14'); // viernes
+  bookSeat(db, getSeatByPosition(db, 'back_center').id, 'Ana');
+
+  for (const iso of ['2025-11-15T10:00:00Z', '2025-11-16T10:00:00Z']) {
+    const { baseUrl, close } = await startServer({ db, now: () => new Date(iso) });
+    try {
+      await fetch(`${baseUrl}/`);
+      await fetch(`${baseUrl}/health`);
+      await fetch(`${baseUrl}/no-ruta`);
+
+      assert.equal(getSeatByPosition(db, 'back_center').name, 'Ana', iso);
+      assert.equal(getConfig(db, CONFIG_KEYS.lastResetDate), '2025-11-14', iso);
+    } finally {
+      await close();
+    }
+  }
 });
