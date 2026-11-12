@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (Node 24)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+
+  docker:
+    name: Docker image smoke test
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t patricar:ci .
+
+      - name: Run container
+        run: |
+          docker run -d --name patricar-ci -p 3000:3000 \
+            -e ADMIN_PIN=ci-pin \
+            patricar:ci
+
+      - name: Wait for health and assert OK
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3000/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:3000/health | grep -q '"status":"ok"'
+          curl -sf http://127.0.0.1:3000/ | grep -q 'PatriCar'
+
+      - name: Container logs
+        if: always()
+        run: docker logs patricar-ci
