@@ -1,5 +1,5 @@
 import { isWorkday } from './clock.js';
-import { CONFIG_KEYS, getConfig, resetDynamicSeats, setConfig } from './db.js';
+import { CONFIG_KEYS, getConfig, resetDynamicSeats, restoreFixedSeats, setConfig } from './db.js';
 
 /**
  * S8: at most one reset per workday, checked on every request.
@@ -16,9 +16,10 @@ export function maybeDailyReset(db, clock) {
     return { status: 'skipped', reason: 'already_reset', today };
   }
 
+  const restored = restoreFixedSeats(db);
   const cleared = resetDynamicSeats(db);
   setConfig(db, CONFIG_KEYS.lastResetDate, today);
-  return { status: 'reset', cleared, today };
+  return { status: 'reset', cleared, restored, today };
 }
 
 /** Express middleware wrapper; a reset must never break the request itself. */

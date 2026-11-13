@@ -204,7 +204,17 @@ function noticeBanner(notice) {
         </div>`;
 }
 
-export function renderScheduleCard({ timeIda, timeVuelta, adminOpen = false, error = null, notice = null }) {
+export function renderScheduleCard({
+  timeIda,
+  timeVuelta,
+  tripTitle = '',
+  puntoIda = 'Bar Cruiff',
+  puntoVuelta = 'Parking Empresa',
+  releasable = [],
+  adminOpen = false,
+  error = null,
+  notice = null,
+}) {
   return `
     <section id="schedule-card" class="glass-card rounded-3xl p-5 md:p-6 shadow-glass relative overflow-hidden transition-all duration-300">
       <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/5">
@@ -226,7 +236,7 @@ export function renderScheduleCard({ timeIda, timeVuelta, adminOpen = false, err
           </span>
           <div id="ida-display" class="text-2xl md:text-3xl font-bold tracking-tight text-white font-mono">${escapeHtml(timeIda)}</div>
           <span class="text-[10px] text-emerald-400/90 mt-1 flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Punto: Rotonda Norte
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Punto: ${escapeHtml(puntoIda)}
           </span>
         </div>
 
@@ -237,7 +247,7 @@ export function renderScheduleCard({ timeIda, timeVuelta, adminOpen = false, err
           </span>
           <div id="vuelta-display" class="text-2xl md:text-3xl font-bold tracking-tight text-white font-mono">${escapeHtml(timeVuelta)}</div>
           <span class="text-[10px] text-purple-300/90 mt-1 flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> Punto: Parking Empresa
+            <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> Punto: ${escapeHtml(puntoVuelta)}
           </span>
         </div>
       </div>
@@ -278,6 +288,57 @@ export function renderScheduleCard({ timeIda, timeVuelta, adminOpen = false, err
             </div>
           </form>
 
+          <form hx-post="/admin/text" hx-target="#app-main" hx-swap="outerHTML" class="space-y-3 pt-3 border-t border-white/5">
+            <p class="text-[11px] font-medium text-slate-300">Textos del viaje</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1 font-medium" for="trip-title-input">Viaje hoy</label>
+                <input id="trip-title-input" name="trip_title" type="text" required maxlength="60" value="${escapeHtml(tripTitle)}"
+                  class="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1 font-medium" for="punto-ida-input">Punto de ida</label>
+                <input id="punto-ida-input" name="punto_ida" type="text" required maxlength="60" value="${escapeHtml(puntoIda)}"
+                  class="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1 font-medium" for="punto-vuelta-input">Punto de vuelta</label>
+                <input id="punto-vuelta-input" name="punto_vuelta" type="text" required maxlength="60" value="${escapeHtml(puntoVuelta)}"
+                  class="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              </div>
+            </div>
+            <div class="flex items-center justify-end gap-2">
+              <input name="pin" type="password" required autocomplete="current-password" placeholder="PIN" aria-label="PIN para editar los textos"
+                class="w-24 bg-slate-800/90 border border-slate-700 rounded-xl px-2 py-1.5 text-xs text-center font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+              <button type="submit" class="px-3 py-1.5 bg-gradient-to-r from-[#3b9e80] to-emerald-600 hover:brightness-110 text-white font-medium text-xs rounded-xl transition-all active:scale-95 flex items-center gap-1.5">
+                ${icon('save', 'w-3.5 h-3.5')} Guardar textos
+              </button>
+            </div>
+          </form>
+
+          <form hx-post="/admin/release" hx-target="#app-main" hx-swap="outerHTML" class="pt-3 border-t border-white/5 space-y-2">
+            <div>
+              <p class="text-[11px] font-medium text-slate-300">Liberar plaza fija</p>
+              <p class="text-[10px] text-slate-500">Queda libre y reservable. Vuelve a su dueño el próximo día laborable.</p>
+            </div>
+            ${
+              releasable.length === 0
+                ? '<p class="text-[10px] text-slate-500">No hay plazas fijas para liberar.</p>'
+                : `<div class="flex flex-wrap items-center gap-2">
+              <input name="pin" type="password" required autocomplete="current-password" placeholder="PIN" aria-label="PIN para liberar plazas"
+                class="w-24 bg-slate-800/90 border border-slate-700 rounded-xl px-2 py-1.5 text-xs text-center font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400">
+              ${releasable
+                .map(
+                  (seat) => `<button type="submit" name="seat_id" value="${seat.id}"
+                class="px-3 py-1.5 rounded-xl bg-amber-950/70 hover:bg-amber-900/80 border border-amber-500/40 text-amber-200 text-xs font-medium transition-colors flex items-center gap-1">
+                ${icon('user-minus', 'w-3.5 h-3.5')} Liberar ${escapeHtml(seat.name)}
+              </button>`,
+                )
+                .join('')}
+            </div>`
+            }
+          </form>
+
           <form hx-post="/admin/reset" hx-target="#app-main" hx-swap="outerHTML" class="pt-3 border-t border-white/5 flex items-center justify-between gap-3">
             <div>
               <p class="text-[11px] font-medium text-slate-300">Resetear plazas</p>
@@ -314,9 +375,28 @@ export function renderToast() {
 }
 
 /** Fragment replaced via `hx-target="#app-main"` by the admin endpoints. */
-export function renderMain({ seats, timeIda, timeVuelta, adminOpen = false, error = null, notice = null }) {
+export function renderMain(state) {
+  const { seats, timeIda, timeVuelta, tripTitle, puntoIda, puntoVuelta } = state;
+  const { adminOpen = false, error = null, notice = null } = state;
+  const releasable = seats.filter((seat) => seat.is_fixed === 1 && seat.position !== 'driver');
   return `<main id="app-main" class="flex flex-col gap-6">
-    ${renderScheduleCard({ timeIda, timeVuelta, adminOpen, error, notice })}
+    <header class="text-center space-y-2">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-inner text-xs font-medium text-emerald-300 mb-1 border border-emerald-500/20 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        <span>Viaje hoy: ${escapeHtml(tripTitle)}</span>
+      </div>
+
+      <div class="flex items-center justify-center gap-3">
+        <div class="p-2.5 rounded-2xl bg-gradient-to-br from-[#3b9e80] to-purple-600 shadow-glow-teal flex items-center justify-center text-white">
+          ${icon('car', 'w-7 h-7 stroke-[2.2]')}
+        </div>
+        <h1 class="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-emerald-200 to-[#3b9e80] bg-clip-text text-transparent">PatriCar</h1>
+      </div>
+
+      <p class="text-sm md:text-base text-slate-400 font-normal">Reserva tu plaza sin spam de WhatsApp 🚗💨</p>
+    </header>
+
+    ${renderScheduleCard({ timeIda, timeVuelta, tripTitle, puntoIda, puntoVuelta, releasable, adminOpen, error, notice })}
     <div id="car-card-region">
       ${renderCarCard(seats)}
       ${renderToast()}
@@ -513,22 +593,6 @@ export function renderPage(state) {
   </div>
 
   <div class="relative z-10 w-full max-w-xl mx-auto px-4 py-6 md:py-10 flex flex-col gap-6">
-    <header class="text-center space-y-2">
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-inner text-xs font-medium text-emerald-300 mb-1 border border-emerald-500/20 shadow-sm">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-        <span>Viaje hoy: Centro de Trabajo · Sede Central</span>
-      </div>
-
-      <div class="flex items-center justify-center gap-3">
-        <div class="p-2.5 rounded-2xl bg-gradient-to-br from-[#3b9e80] to-purple-600 shadow-glow-teal flex items-center justify-center text-white">
-          ${icon('car', 'w-7 h-7 stroke-[2.2]')}
-        </div>
-        <h1 class="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-emerald-200 to-[#3b9e80] bg-clip-text text-transparent">PatriCar</h1>
-      </div>
-
-      <p class="text-sm md:text-base text-slate-400 font-normal">Reserva tu plaza sin spam de WhatsApp 🚗💨</p>
-    </header>
-
     ${renderMain(state)}
   </div>
 

@@ -91,6 +91,7 @@ un defecto que esta implementación no hereda.
 | T9 | S11 | CI + README | `726c159` |
 | T10 | — | repo público en GitHub + push | ver Log L6 |
 | T11 | — | verificación independiente + review nativa | ver Log L6 |
+| T12 | S13-S14 | liberar plazas fijas y textos del viaje editables con PIN | `1b6` (ver L9) |
 
 ## Log
 
@@ -239,3 +240,32 @@ L8 (cierre de la línea por decisión del usuario):
   `GENTLE_PI_REVIEW_RELAY_PI_TIMEOUT_MS=7200000` y abrir una línea nueva sobre el mismo
   rango (`baseRef` = commit previo a `eb38c5c`, `committedOnly: true`). No conviene
   fabricar un candidato más chico: exigiría reescribir historia ya publicada en `main`.
+
+S13 — Liberar plazas fijas con PIN. `POST /admin/release` con `pin` y `seat_id`.
+PIN correcto y asiento fijo liberable (`copilot`, `back_left`) → el asiento vuelve a `name = 'Libre'`
+y `is_fixed = 0`, o sea queda **reservable** por cualquiera, y retorna la interfaz del coche
+actualizada (200). Errores: `401` PIN incorrecto sin tocar la base; `404` `seat_id` inexistente;
+`409` si el asiento no es fijo o si es `driver` (Patri maneja, su plaza no se libera).
+El reseteo diario restaura las plazas fijas a su dueño original (`driver`/`copilot`/`back_left`)
+antes de limpiar las dinámicas, así una plaza liberada vuelve a su dueño el siguiente día laborable.
+
+S14 — Textos del viaje editables con PIN. `POST /admin/text` con `pin`, `trip_title`,
+`punto_ida` y `punto_vuelta`. PIN correcto → persiste los tres en `config` y retorna la
+interfaz actualizada (200). PIN incorrecto → `401` sin cambios. Texto vacío o de más de
+60 caracteres (después del trim) → `400` sin cambios. Los valores se escapan al renderizar.
+Defaults: `trip_title` = `Centro de Trabajo · Sede Central`, `punto_ida` = `Bar Cruiff`,
+`punto_vuelta` = `Parking Empresa`. La vista muestra `Viaje hoy: <trip_title>`,
+`Punto: <punto_ida>` y `Punto: <punto_vuelta>`.
+
+L9 (pedido del usuario, verbatim):
+> Estupendo esto ya funciona, ahora quiero que pulas unos detalles simples, que se puedan eliminar las plazas de Javi y Paqui con pin, que el punto de ida ponga "Bar Cruiff" y que pueda editar Viaje hoy: "Centro de trabajo · Sede central" también con pin. Haz esto y despliegaló rápido para que lo pueda ver desde ya
+
+Decisiones derivadas:
+- "Eliminar" una plaza fija = liberarla: pasa a `is_fixed = 0` y `name = 'Libre'`, o sea reservable.
+  El reseteo diario la devuelve a su dueño (`restoreFixedSeats`), así Javi y Paqui no pierden la
+  plaza para siempre por faltar un día.
+- La plaza de la conductora no se libera (409): Patri maneja.
+- Los tres textos (`trip_title`, `punto_ida`, `punto_vuelta`) son editables con el mismo PIN, no
+  solo el que pidió el usuario: si "Bar Cruiff" quedaba hardcodeado, el próximo cambio de bar
+  volvía a necesitar código.
+- La cabecera con `Viaje hoy:` se movió dentro de `#app-main` para que el swap de HTMX la refresque.

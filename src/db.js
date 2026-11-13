@@ -4,16 +4,26 @@ export const CONFIG_KEYS = Object.freeze({
   timeIda: 'time_ida',
   timeVuelta: 'time_vuelta',
   lastResetDate: 'last_reset_date',
+  tripTitle: 'trip_title',
+  puntoIda: 'punto_ida',
+  puntoVuelta: 'punto_vuelta',
 });
 
 export const CONFIG_DEFAULTS = Object.freeze({
   [CONFIG_KEYS.timeIda]: '08:00',
   [CONFIG_KEYS.timeVuelta]: '17:00',
   [CONFIG_KEYS.lastResetDate]: '',
+  [CONFIG_KEYS.tripTitle]: 'Centro de Trabajo · Sede Central',
+  [CONFIG_KEYS.puntoIda]: 'Bar Cruiff',
+  [CONFIG_KEYS.puntoVuelta]: 'Parking Empresa',
 });
 
 export const FREE = 'Libre';
 export const MAX_NAME_LENGTH = 40;
+export const MAX_TEXT_LENGTH = 60;
+
+/** Fixed seats that admin may release; the driver's seat never is. */
+export const RELEASABLE_POSITIONS = Object.freeze(['copilot', 'back_left']);
 
 const SEED_SEATS = [
   { position: 'driver', name: 'Patri', isFixed: 1 },
@@ -125,4 +135,43 @@ export function resetDynamicSeats(db) {
     .prepare('UPDATE seats SET name = ? WHERE is_fixed = 0 AND name <> ?')
     .run(FREE, FREE);
   return info.changes;
+}
+
+/**
+ * S13: admin frees a fixed seat so anyone can book it. The daily reset puts the
+ * owner back, so "Javi no viene hoy" never costs him the seat for good.
+ */
+export function releaseFixedSeat(db, id) {
+  const seat = getSeat(db, id);
+  if (!seat) return { ok: false, code: 404, error: 'not_found' };
+  if (seat.is_fixed !== 1) return { ok: false, code: 409, error: 'not_fixed_seat', seat };
+  if (!RELEASABLE_POSITIONS.includes(seat.position)) {
+    return { ok: false, code: 409, error: 'driver_seat', seat };
+  }
+
+  db.prepare('UPDATE seats SET name = ?, is_fixed = 0 WHERE id = ?').run(FREE, id);
+  return { ok: true, seat: getSeat(db, id) };
+}
+
+/** S13: puts every fixed seat back to its seed owner before the daily cleanup. */
+export function restoreFixedSeats(db) {
+  const update = db.prepare('UPDATE seats SET name = ?, is_fixed = 1 WHERE position = ?');
+  let changed = 0;
+  const run = db.transaction((rows) => {
+    for (const row of rows) {
+      if (row.isFixed === 1) changed += update.run(row.name, row.position).changes;
+    }
+  });
+  run(SEED_SEATS);
+  return changed;
+}
+
+/** S14: admin-editable copy, trimmed and length-checked by the caller. */
+export function setTexts(db, { tripTitle, puntoIda, puntoVuelta }) {
+  const run = db.transaction(() => {
+    setConfig(db, CONFIG_KEYS.tripTitle, tripTitle);
+    setConfig(db, CONFIG_KEYS.puntoIda, puntoIda);
+    setConfig(db, CONFIG_KEYS.puntoVuelta, puntoVuelta);
+  });
+  run();
 }

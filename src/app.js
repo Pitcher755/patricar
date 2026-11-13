@@ -2,13 +2,16 @@ import express from 'express';
 
 import {
   CONFIG_KEYS,
+  MAX_TEXT_LENGTH,
   getConfig,
   getSeat,
   getSeats,
   bookSeat,
   unbookSeat,
+  releaseFixedSeat,
   resetDynamicSeats,
   setConfig,
+  setTexts,
 } from './db.js';
 import { dailyResetMiddleware } from './reset.js';
 import { pinMatches, isValidTime } from './security.js';
@@ -18,6 +21,7 @@ export const BODY_LIMIT = '10kb';
 
 export const PIN_ERROR = 'PIN incorrecto. Probá otra vez.';
 export const TIME_ERROR = 'Las horas van en formato HH:MM (24 h).';
+export const TEXT_ERROR = 'Cada texto va de 1 a 60 caracteres.';
 
 /**
  * Builds the Express app. Dependencies are injected so tests can control the
@@ -98,6 +102,77 @@ export function createApp({ db, adminPin, clock, logger = console }) {
       );
   });
 
+  app.post('/admin/text', (req, res) => {
+    const body = req.body ?? {};
+
+    if (!pinMatches(body.pin, adminPin)) {
+      return res
+        .status(401)
+        .type('html')
+        .send(renderMain(viewState(db, { adminOpen: true, error: PIN_ERROR })));
+    }
+
+    const texts = {
+      tripTitle: normalizeText(body.trip_title),
+      puntoIda: normalizeText(body.punto_ida),
+      puntoVuelta: normalizeText(body.punto_vuelta),
+    };
+    const valid = Object.values(texts).every(
+      (value) => value.length > 0 && value.length <= MAX_TEXT_LENGTH,
+    );
+
+    if (!valid) {
+      return res
+        .status(400)
+        .type('html')
+        .send(renderMain(viewState(db, { adminOpen: true, error: TEXT_ERROR })));
+    }
+
+    setTexts(db, texts);
+    return res
+      .status(200)
+      .type('html')
+      .send(renderMain(viewState(db, { adminOpen: true, notice: 'Textos actualizados.' })));
+  });
+
+  app.post('/admin/release', (req, res) => {
+    const { pin } = req.body ?? {};
+
+    if (!pinMatches(pin, adminPin)) {
+      return res
+        .status(401)
+        .type('html')
+        .send(renderMain(viewState(db, { adminOpen: true, error: PIN_ERROR })));
+    }
+
+    const id = parseSeatId(String(req.body?.seat_id ?? ''));
+    if (id === null) return res.status(404).type('text').send('Seat not found');
+
+    const owner = getSeat(db, id)?.name ?? '';
+    const result = releaseFixedSeat(db, id);
+
+    if (!result.ok) {
+      if (!result.seat) return res.status(404).type('text').send('Seat not found');
+      const message =
+        result.error === 'driver_seat'
+          ? 'La plaza de la conductora no se libera.'
+          : 'Esa plaza ya está libre y se puede reservar.';
+      return res
+        .status(result.code)
+        .type('html')
+        .send(renderMain(viewState(db, { adminOpen: true, error: message })));
+    }
+
+    return res.status(200).type('html').send(
+      renderMain(
+        viewState(db, {
+          adminOpen: true,
+          notice: `Plaza de ${owner} liberada: ahora cualquiera puede reservarla.`,
+        }),
+      ),
+    );
+  });
+
   app.post('/admin/reset', (req, res) => {
     const { pin } = req.body ?? {};
 
@@ -147,6 +222,9 @@ export function viewState(db, extra = {}) {
     seats: getSeats(db),
     timeIda: getConfig(db, CONFIG_KEYS.timeIda),
     timeVuelta: getConfig(db, CONFIG_KEYS.timeVuelta),
+    tripTitle: getConfig(db, CONFIG_KEYS.tripTitle),
+    puntoIda: getConfig(db, CONFIG_KEYS.puntoIda),
+    puntoVuelta: getConfig(db, CONFIG_KEYS.puntoVuelta),
     ...extra,
   };
 }
@@ -154,6 +232,10 @@ export function viewState(db, extra = {}) {
 /** Only positive integer ids reach the database. */
 function parseSeatId(raw) {
   return /^\d+$/.test(raw ?? '') ? Number(raw) : null;
+}
+
+function normalizeText(raw) {
+  return typeof raw === 'string' ? raw.trim() : '';
 }
 
 function messageFor(result) {
